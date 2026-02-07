@@ -6,7 +6,7 @@ $branch = 'main'; // Branch yang akan di-pull
 $logFile = '../storage/logs/webhook.log';
 
 // Verifikasi Signature (Keamanan)
-$signature = $_SERVER['HTTP_X_HUB_SIGNATURE'] ?? '';
+$signature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
 $payload = file_get_contents('php://input');
 
 if ($secret) {
