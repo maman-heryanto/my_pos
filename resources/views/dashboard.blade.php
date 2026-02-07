@@ -3,7 +3,7 @@
 @section('content')
 <div class="row">
     <div class="col-md-12 mb-4">
-        <h1>Dashboard POS</h1>
+        <h1>Dashboard POS R3 Jaya</h1>
     </div>
 </div>
 
