@@ -5,14 +5,33 @@ $secret = 'adaSecretGithubgaBang123321123321'; // Ganti dengan secret yang Anda 
 $branch = 'main'; // Branch yang akan di-pull
 $logFile = '../storage/logs/webhook.log';
 
-// Verifikasi Signature (Keamanan)
-$signature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
+// Debugging: Log semua header untuk melihat apa yang dikirim GitHub
+function getRequestHeaders() {
+    $headers = array();
+    foreach($_SERVER as $key => $value) {
+        if (substr($key, 0, 5) <> 'HTTP_') {
+            continue;
+        }
+        $header = str_replace(' ', '-', ucwords(str_replace('_', ' ', strtolower(substr($key, 5)))));
+        $headers[$header] = $value;
+    }
+    return $headers;
+}
+
+$headers = getRequestHeaders();
 $payload = file_get_contents('php://input');
+
+// Log Headers dan Payload untuk Debugging
+$logMsg = "Headers: " . print_r($headers, true) . "\nPayload: " . $payload . "\n";
+file_put_contents($logFile, date('Y-m-d H:i:s') . " - DEBUG RECEIVED:\n" . $logMsg, FILE_APPEND);
+
+// Coba ambil signature dari berbagai kemungkinan header
+$signature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? $_SERVER['HTTP_X_HUB_SIGNATURE'] ?? '';
 
 if ($secret) {
     if (!$signature) {
         http_response_code(403);
-        die('Signature missing.');
+        die('Signature missing. Headers received: ' . print_r($headers, true));
     }
 
     list($algo, $hash) = explode('=', $signature, 2);
@@ -20,7 +39,7 @@ if ($secret) {
 
     if (!hash_equals($hash, $payloadHash)) {
         http_response_code(403);
-        die('Invalid signature.');
+        die("Invalid signature. Algo: $algo, Hash: $hash, Calculated: $payloadHash");
     }
 }
 
