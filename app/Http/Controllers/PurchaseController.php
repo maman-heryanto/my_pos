@@ -18,7 +18,10 @@ class PurchaseController extends Controller
     public function create()
     {
         $suppliers = \App\Models\Supplier::all();
-        $products = \App\Models\Product::all();
+        $products = \App\Models\Product::all()->map(function($product) {
+            $product->stock = (float) $product->stock;
+            return $product;
+        });
         return view('purchases.create', compact('suppliers', 'products'));
     }
 

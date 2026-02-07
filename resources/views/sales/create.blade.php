@@ -66,7 +66,8 @@
                     </div>
                     <div class="mb-3">
                         <label>Jumlah Bayar</label>
-                        <input type="number" step="1" name="paid_amount" id="paid_amount" class="form-control" oninput="calculateChange()" required>
+                        <input type="text" id="paid_amount_display" class="form-control" oninput="formatPaidAmount()" required>
+                        <input type="hidden" name="paid_amount" id="paid_amount" value="0">
                     </div>
                     <div class="mb-3">
                         <label for="change_amount">Kembalian / Hutang</label>
@@ -180,11 +181,11 @@
                             ${options}
                         </select>
                     </td>
-                    <td><input type="number" step="1" class="form-control price-input" readonly>
+                    <td><input type="text" class="form-control price-input" readonly>
                         <input type="hidden" name="details[${rowIdx}][price]" class="price-hidden">
                     </td>
                     <td><span class="stock-display">0</span></td>
-                    <td><input type="number" step="0.001" name="details[${rowIdx}][quantity]" class="form-control qty-input" oninput="calculateRow(${rowIdx})" required></td>
+                    <td><input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" name="details[${rowIdx}][quantity]" class="form-control qty-input" oninput="calculateRow(${rowIdx})" placeholder="0" required></td>
                     <td class="subtotal">0</td>
                     <td><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(${rowIdx})">X</button></td>
                 </tr>
@@ -206,27 +207,34 @@
         let select = document.querySelector(`#row_${idx} .product-select`);
         let selectedOption = select.options[select.selectedIndex];
         let price = parseFloat(selectedOption.getAttribute('data-price')) || 0;
-        let stock = selectedOption.getAttribute('data-stock') || 0;
+        let stock = parseFloat(selectedOption.getAttribute('data-stock')) || 0; // Parse float to remove trailing zeros
 
-        document.querySelector(`#row_${idx} .price-input`).value = price.toFixed(0);
+        document.querySelector(`#row_${idx} .price-input`).value = new Intl.NumberFormat('id-ID').format(price);
         document.querySelector(`#row_${idx} .price-hidden`).value = price;
-        document.querySelector(`#row_${idx} .stock-display`).innerText = stock;
+        document.querySelector(`#row_${idx} .stock-display`).innerText = stock; // Display clean number
         
         calculateRow(idx);
     }
 
     function calculateRow(idx) {
-        let qty = parseFloat(document.querySelector(`#row_${idx} .qty-input`).value) || 0;
+        let qtyVal = document.querySelector(`#row_${idx} .qty-input`).value;
+        let qty = parseFloat(qtyVal.replace(',', '.')) || 0;
         let price = parseFloat(document.querySelector(`#row_${idx} .price-hidden`).value) || 0;
         let subtotal = qty * price;
-        document.querySelector(`#row_${idx} .subtotal`).innerText = subtotal.toFixed(0);
+        document.querySelector(`#row_${idx} .subtotal`).innerText = new Intl.NumberFormat('id-ID').format(subtotal);
         calculateGrandTotal();
     }
 
     function calculateGrandTotal() {
         let subtotal = 0;
-        document.querySelectorAll('.subtotal').forEach(el => {
-            subtotal += parseFloat(el.innerText) || 0;
+        document.querySelectorAll(`#cart_table tbody tr`).forEach(row => {
+             // Re-calculate based on hidden values to be safe, or parse the formatted subtotal text
+             // Better to recalculate from inputs to avoid parsing errors
+             let rowId = row.id.replace('row_', '');
+             let qtyVal = row.querySelector('.qty-input').value;
+             let qty = parseFloat(qtyVal.replace(',', '.')) || 0;
+             let price = parseFloat(row.querySelector('.price-hidden').value) || 0;
+             subtotal += qty * price;
         });
         
         document.getElementById('display_subtotal').value = new Intl.NumberFormat('id-ID').format(subtotal);
@@ -241,8 +249,8 @@
 
         let total = subtotal - discount;
 
-        document.getElementById('grand_total').innerText = total.toFixed(0);
-        document.getElementById('display_total').value = new Intl.NumberFormat('id-ID').format(total);
+        document.getElementById('grand_total').innerText = total; // Keep raw for calculation
+        document.getElementById('display_total').value = new Intl.NumberFormat('id-ID').format(total); // Display formatted
         calculateChange();
     }
 
@@ -258,7 +266,7 @@
         } 
         // Or just update the input
         
-        document.getElementById('change_amount').value = change.toFixed(0);
+        document.getElementById('change_amount').value = new Intl.NumberFormat('id-ID').format(change);
         
         // Visual feedback
         if (change < 0) {
@@ -268,6 +276,27 @@
             document.getElementById('change_amount').classList.add('text-success');
             document.getElementById('change_amount').classList.remove('text-danger');
         }
+    }
+
+    function formatPaidAmount() {
+        let display = document.getElementById('paid_amount_display');
+        let hidden = document.getElementById('paid_amount');
+        
+        // Remove non-numeric except comma/dot? actually just keep numbers
+        // ID format: 150.000
+        let raw = display.value.replace(/\./g, '').replace(/[^0-9]/g, '');
+        let val = parseFloat(raw) || 0;
+        
+        hidden.value = val;
+        
+        // Only format if there is a value to avoid weird cursor if clearing
+        if (raw) {
+            display.value = new Intl.NumberFormat('id-ID').format(val);
+        } else {
+             display.value = '';
+        }
+
+        calculateChange();
     }
 
     // Initialize with one row

@@ -48,7 +48,8 @@
 
     <div class="mb-3">
         <label>Jumlah Bayar</label>
-        <input type="number" step="1" name="amount" id="amount" class="form-control @error('amount') is-invalid @enderror" value="{{ old('amount') }}" required>
+        <input type="text" id="amount_display" class="form-control @error('amount') is-invalid @enderror" value="{{ old('amount') }}" oninput="formatAmount()" required>
+        <input type="hidden" name="amount" id="amount" value="{{ old('amount') }}">
         @error('amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
 
@@ -94,9 +95,27 @@
             amountEl.innerText = new Intl.NumberFormat('id-ID').format(debt);
             // Autofill amount
             document.getElementById('amount').value = debt;
+            document.getElementById('amount_display').value = new Intl.NumberFormat('id-ID').format(debt);
         } else {
             display.style.display = 'none';
             document.getElementById('amount').value = '';
+            document.getElementById('amount_display').value = '';
+        }
+    }
+
+    function formatAmount() {
+        let display = document.getElementById('amount_display');
+        let hidden = document.getElementById('amount');
+        
+        let raw = display.value.replace(/\./g, '').replace(/[^0-9]/g, '');
+        let val = parseFloat(raw) || 0;
+        
+        hidden.value = val;
+        
+        if (raw) {
+            display.value = new Intl.NumberFormat('id-ID').format(val);
+        } else {
+             display.value = '';
         }
     }
 </script>

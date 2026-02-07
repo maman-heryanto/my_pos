@@ -24,7 +24,10 @@ class SaleController extends Controller
     public function create()
     {
         $customers = \App\Models\Customer::with('sales')->get();
-        $products = \App\Models\Product::where('stock', '>', 0)->get();
+        $products = \App\Models\Product::where('stock', '>', 0)->get()->map(function($product) {
+            $product->stock = (float) $product->stock;
+            return $product;
+        });
         return view('sales.create', compact('customers', 'products'));
     }
 

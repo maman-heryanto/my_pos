@@ -18,7 +18,8 @@
     </div>
     <div class="mb-3">
         <label>Stok Awal</label>
-        <input type="number" step="0.001" name="stock" class="form-control" required>
+        <input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" name="stock" class="form-control" placeholder="0" required>
+        <small class="form-text text-muted">Gunakan titik (.) sebagai pemisah desimal. Contoh: 1.5</small>
     </div>
     <div class="mb-3">
         <label>Satuan</label>
