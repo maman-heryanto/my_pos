@@ -128,22 +128,7 @@
     <!-- Main content -->
     <section class="content">
       <div class="container-fluid">
-        @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ session('success') }}
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-        @endif
-        @if(session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{ session('error') }}
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-        @endif
+        {{-- Alerts handled by Toasts in scripts --}}
 
         @yield('content')
       </div>
@@ -167,6 +152,33 @@
 <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <!-- AdminLTE App -->
 <script src="{{ asset('vendor/adminlte/js/adminlte.min.js') }}"></script>
+<script>
+    $(document).ready(function() {
+        @if(session('success'))
+            $(document).Toasts('create', {
+                class: 'bg-success',
+                title: 'Berhasil',
+                subtitle: 'Sekarang',
+                body: '{{ session('success') }}',
+                autohide: true,
+                delay: 3000,
+                icon: 'fas fa-check-circle'
+            });
+        @endif
+
+        @if(session('error'))
+            $(document).Toasts('create', {
+                class: 'bg-danger',
+                title: 'Gagal',
+                subtitle: 'Sekarang',
+                body: '{{ session('error') }}',
+                autohide: true,
+                delay: 5000,
+                icon: 'fas fa-exclamation-circle'
+            });
+        @endif
+    });
+</script>
 @stack('scripts')
 </body>
 </html>
