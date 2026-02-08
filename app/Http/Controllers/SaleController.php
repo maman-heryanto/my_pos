@@ -17,6 +17,14 @@ class SaleController extends Controller
             $query->where('payment_status', $request->payment_status);
         }
 
+        if ($request->start_date) {
+            $query->whereDate('date', '>=', $request->start_date);
+        }
+
+        if ($request->end_date) {
+            $query->whereDate('date', '<=', $request->end_date);
+        }
+
         $sales = $query->get();
         return view('sales.index', compact('sales'));
     }

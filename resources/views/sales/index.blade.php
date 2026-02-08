@@ -108,6 +108,21 @@
                             <option value="debt" {{ request('payment_status') == 'debt' ? 'selected' : '' }}>Hutang (Unpaid)</option>
                         </select>
                     </div>
+                    <div class="col-md-3">
+                        <label class="font-weight-bold text-muted small">Tanggal Mulai</label>
+                        <input type="date" name="start_date" class="form-control search-input" value="{{ request('start_date') }}" onchange="this.form.submit()">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="font-weight-bold text-muted small">Tanggal Akhir</label>
+                        <input type="date" name="end_date" class="form-control search-input" value="{{ request('end_date') }}" onchange="this.form.submit()">
+                    </div>
+                    <div class="col-md-3">
+                         @if(request('payment_status') || request('start_date') || request('end_date'))
+                        <a href="{{ route('sales.index') }}" class="btn btn-outline-secondary btn-block search-input" style="border-radius: 12px; padding-top: 10px;">
+                            <i class="fas fa-undo mr-2"></i> Reset Filter
+                        </a>
+                        @endif
+                    </div>
                 </div>
             </form>
 
