@@ -1,84 +1,216 @@
 @extends('layouts.app')
 
-@section('content')
-<h1>Penjualan Baru (POS)</h1>
-<form action="{{ route('sales.store') }}" method="POST" id="pos-form">
-    @csrf
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <label>Pelanggan</label>
-            <select name="customer_id" id="customer_select" class="form-control" onchange="showDebt()">
-                <option value="" data-debt="0">Pelanggan Umum (Walk-in)</option>
-                @foreach($customers as $customer)
-                <option value="{{ $customer->id }}" data-debt="{{ $customer->debt }}">{{ $customer->name }}</option>
-                @endforeach
-            </select>
-            <small id="debt_display" class="text-danger font-weight-bold" style="display:none;">Hutang saat ini: Rp <span id="debt_amount">0</span></small>
-        </div>
-        <div class="col-md-6">
-            <label>Tanggal</label>
-            <input type="date" name="date" class="form-control" value="{{ date('Y-m-d') }}" required>
-        </div>
-    </div>
+@section('title', 'Kasir Point of Sale')
 
-    <h4>Keranjang Belanja</h4>
-    <div class="row">
-        <div class="col-md-8">
-            <table class="table table-bordered" id="cart_table">
-                <thead>
-                    <tr>
-                        <th>Produk</th>
-                        <th>Harga</th>
-                        <th>Stok</th>
-                        <th>Qty</th>
-                        <th>Subtotal</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <th colspan="4" class="text-right">Total</th>
-                        <th id="grand_total">0.00</th>
-                        <th></th>
-                    </tr>
-                </tfoot>
-            </table>
-            <button type="button" class="btn btn-primary" onclick="addRow()">+ Tambah Item</button>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">Pembayaran</div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label>Subtotal</label>
-                        <input type="text" id="display_subtotal" class="form-control" readonly>
+@push('styles')
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Poppins', sans-serif !important;
+    }
+    .content-wrapper {
+        background: #f4f6f9;
+    }
+    .pos-card {
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        border: none;
+        background: #fff;
+        overflow: hidden;
+        margin-bottom: 25px;
+        transition: all 0.3s ease;
+    }
+    .pos-card:hover {
+        box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+        transform: translateY(-2px);
+    }
+    .pos-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 20px 20px 0 0;
+    }
+    .pos-header h3 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.2rem;
+    }
+    .btn-gradient {
+        background: linear-gradient(to right, #667eea, #764ba2);
+        border: none;
+        color: white;
+        border-radius: 12px;
+        font-weight: 600;
+        padding: 12px 25px;
+        box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
+        transition: all 0.3s ease;
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(to right, #764ba2, #667eea);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(118, 75, 162, 0.6);
+        color: white;
+    }
+    .form-control-lg-custom {
+        height: 50px;
+        border-radius: 12px;
+        border: 1px solid #e0e0e0;
+        padding: 0 20px;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    .form-control-lg-custom:focus {
+        border-color: #764ba2;
+        box-shadow: 0 0 0 4px rgba(118, 75, 162, 0.1);
+    }
+    .total-display {
+        background: linear-gradient(135deg, #2c3e50 0%, #000000 100%);
+        color: #fff;
+        padding: 25px;
+        border-radius: 15px;
+        text-align: right;
+        margin-bottom: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    .total-label {
+        font-size: 0.9rem;
+        opacity: 0.8;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .total-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 5px 0 0 0;
+    }
+    .table-custom th {
+        background-color: #f8f9fa;
+        border-top: none;
+        color: #666;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+    .table-custom td {
+        vertical-align: middle;
+    }
+    .badge-debt {
+        background: #ffe3e3;
+        color: #ff4757;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+</style>
+@endpush
+
+@section('content')
+<div class="row pt-3">
+    <!-- Left Column: Cart -->
+    <div class="col-lg-8">
+        <div class="pos-card">
+            <div class="pos-header d-flex justify-content-between align-items-center">
+                <h3><i class="fas fa-shopping-cart mr-2"></i> Transaksi Baru</h3>
+                <span class="badge badge-light text-primary" style="font-size: 0.9rem;">{{ date('d F Y') }}</span>
+            </div>
+            <div class="card-body p-4">
+                <form action="{{ route('sales.store') }}" method="POST" id="pos-form">
+                    @csrf
+                    <div class="row mb-4">
+                        <div class="col-md-7">
+                            <label class="text-muted mb-2">Pilih Pelanggan</label>
+                            <select name="customer_id" id="customer_select" class="form-control form-control-lg-custom" onchange="showDebt()">
+                                <option value="" data-debt="0">Pelanggan Umum (Walk-in)</option>
+                                @foreach($customers as $customer)
+                                <option value="{{ $customer->id }}" data-debt="{{ $customer->debt }}">{{ $customer->name }}</option>
+                                @endforeach
+                            </select>
+                            <div id="debt_display" class="mt-2" style="display:none;">
+                                <span class="badge-debt"><i class="fas fa-exclamation-circle mr-1"></i> Hutang: Rp <span id="debt_amount">0</span></span>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="text-muted mb-2">Tanggal Transaksi</label>
+                            <input type="date" name="date" class="form-control form-control-lg-custom" value="{{ date('Y-m-d') }}" required>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label>Potongan / Diskon (Rp)</label>
-                        <input type="number" name="discount" id="discount" class="form-control" value="0" min="0" oninput="calculateGrandTotal()">
+
+                    <div class="table-responsive">
+                        <table class="table table-custom table-hover" id="cart_table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 35%;">Produk</th>
+                                    <th style="width: 20%;">Harga</th>
+                                    <th style="width: 10%;">Stok</th>
+                                    <th style="width: 15%;">Qty</th>
+                                    <th style="width: 15%;">Subtotal</th>
+                                    <th style="width: 5%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="mb-3">
-                        <label>Total Tagihan (Setelah Diskon)</label>
-                        <input type="text" id="display_total" class="form-control font-weight-bold text-primary" readonly style="font-size: 1.2rem;">
-                        <span id="grand_total" style="display:none;">0</span> 
-                    </div>
-                    <div class="mb-3">
-                        <label>Jumlah Bayar</label>
-                        <input type="text" id="paid_amount_display" class="form-control" oninput="formatPaidAmount()" required>
-                        <input type="hidden" name="paid_amount" id="paid_amount" value="0">
-                    </div>
-                    <div class="mb-3">
-                        <label for="change_amount">Kembalian / Hutang</label>
-                        <input type="text" id="change_amount" class="form-control" readonly>
-                    </div>
-                    <button type="submit" class="btn btn-success w-100">Selesaikan Transaksi</button>
-                </div>
+                    
+                    <button type="button" class="btn btn-outline-primary btn-block p-3 mt-3" style="border-radius: 12px; border-style: dashed; border-width: 2px;" onclick="addRow()">
+                        <i class="fas fa-plus-circle mr-2"></i> Tambah Baris Produk
+                    </button>
             </div>
         </div>
     </div>
-</form>
+
+    <!-- Right Column: Payment -->
+    <div class="col-lg-4">
+        <div class="pos-card">
+            <div class="card-body p-4">
+                <div class="total-display">
+                    <div class="total-label">Total Tagihan</div>
+                    <div class="total-value">Rp <span id="grand_total_display">0</span></div>
+                    <span id="grand_total" style="display:none;">0</span> 
+                </div>
+
+                <div class="form-group mb-4">
+                    <label class="text-muted font-weight-bold">Subtotal</label>
+                    <input type="text" id="display_subtotal" class="form-control form-control-lg-custom" readonly style="background: #fff; font-weight: 600;">
+                </div>
+
+                <div class="form-group mb-4">
+                    <label class="text-muted font-weight-bold">Potongan / Diskon</label>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text bg-white border-right-0" style="border-radius: 12px 0 0 12px; border-color: #e0e0e0;"><i class="fas fa-tag text-muted"></i></span>
+                        </div>
+                        <input type="number" name="discount" id="discount" class="form-control form-control-lg-custom border-left-0" style="border-radius: 0 12px 12px 0;" value="0" min="0" oninput="calculateGrandTotal()">
+                    </div>
+                </div>
+
+                <div class="form-group mb-4">
+                    <label class="text-muted font-weight-bold">Jumlah Bayar</label>
+                     <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text bg-white border-right-0" style="border-radius: 12px 0 0 12px; border-color: #e0e0e0;"><i class="fas fa-wallet text-muted"></i></span>
+                        </div>
+                        <input type="text" id="paid_amount_display" class="form-control form-control-lg-custom border-left-0" style="border-radius: 0 12px 12px 0; font-size: 1.2rem; font-weight: bold; color: #2ecc71;" oninput="formatPaidAmount()" required placeholder="0">
+                        <input type="hidden" name="paid_amount" id="paid_amount" value="0">
+                    </div>
+                </div>
+
+                <div class="form-group mb-4">
+                    <label for="change_amount" class="text-muted font-weight-bold">Kembalian / Menjadi Hutang</label>
+                    <input type="text" id="change_amount" class="form-control form-control-lg-custom" readonly style="background: #f8f9fa; font-weight: 700;">
+                </div>
+
+                <button type="submit" class="btn btn-gradient btn-block py-3">
+                    <i class="fas fa-check-circle mr-2"></i> SELESAIKAN TRANSAKSI
+                </button>
+                </form> <!-- Close Form -->
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
 
 @push('scripts')
     <!-- SweetAlert2 -->
@@ -181,13 +313,13 @@
                             ${options}
                         </select>
                     </td>
-                    <td><input type="text" class="form-control price-input" readonly>
+                    <td><input type="text" class="form-control price-input" readonly style="background-color: #f8f9fa;">
                         <input type="hidden" name="details[${rowIdx}][price]" class="price-hidden">
                     </td>
-                    <td><span class="stock-display">0</span></td>
-                    <td><input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" name="details[${rowIdx}][quantity]" class="form-control qty-input" oninput="calculateRow(${rowIdx})" placeholder="0" required></td>
-                    <td class="subtotal">0</td>
-                    <td><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(${rowIdx})">X</button></td>
+                    <td><span class="stock-display badge badge-info">0</span></td>
+                    <td><input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" name="details[${rowIdx}][quantity]" class="form-control qty-input text-center font-weight-bold" oninput="calculateRow(${rowIdx})" placeholder="0" required></td>
+                    <td class="subtotal font-weight-bold text-right">0</td>
+                    <td><button type="button" class="btn btn-sm btn-outline-danger btn-block" onclick="removeRow(${rowIdx})"><i class="fas fa-trash"></i></button></td>
                 </tr>
             `;
             document.querySelector('#cart_table tbody').insertAdjacentHTML('beforeend', html);
@@ -250,7 +382,7 @@
         let total = subtotal - discount;
 
         document.getElementById('grand_total').innerText = total; // Keep raw for calculation
-        document.getElementById('display_total').value = new Intl.NumberFormat('id-ID').format(total); // Display formatted
+        document.getElementById('grand_total_display').innerText = new Intl.NumberFormat('id-ID').format(total); // Display formatted
         calculateChange();
     }
 
@@ -319,4 +451,4 @@
     }
 </script>
 @endpush
-@endsection
+
